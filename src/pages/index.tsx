@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import Head from "next/head";
 import Link from "next/link";
-import {signIn, useSession} from 'next-auth/react'
+// import {signIn} from 'next-auth/react'
 
 import { api } from "~/utils/api";
 
 export default function Home() {
   // const mutation = api.auth.register.useMutation();
-  const mutation = api.dependent.addDependent.useMutation()
+  // const mutation = api.dependent.addDependent.useMutation()
 
   const handleLogin = async () => {
     // mutation.mutate({
@@ -20,22 +20,22 @@ export default function Home() {
     //   password: '12345678'
     // })
 
-    const data = {
-      email: '20piyushmittal@gmail.com',
-      password: '12345678'
-    }
+    // const data = {
+    //   email: '20piyushmittal@gmail.com',
+    //   password: '12345678'
+    // }
 
-    await signIn('credentials', {...data, callbackUrl: "/"});
+    // await signIn('credentials', {...data, callbackUrl: "/"});
   }
 
   // const {data} = useSession()
 
   const handleCreate = async() => {
-    mutation.mutate({
-      name: 'John',
-      dateOfBirth: new Date(),
-      relation: 'Brother',
-    })
+    // mutation.mutate({
+    //   name: 'John',
+    //   dateOfBirth: new Date(),
+    //   relation: 'Brother',
+    // })
   }
 
   return (

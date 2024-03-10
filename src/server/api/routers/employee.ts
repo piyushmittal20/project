@@ -9,26 +9,41 @@ const createEmployeeSchema = z.object({
     dateOfJoining: z.date(),
     designation: z.string(),
     insuranceId: z.number(),
-    employeeId: z.string()
+    employeeId: z.string(),
+    dependents: z.array(
+        z.object({
+            name: z.string(),
+            relation: z.string(),
+            dateOfBirth: z.date(),
+        })
+    ),
 })
 const updateEmployeeSchema = z.object({
     id: z.number(),
-    username: z.string(),
-    email: z.string(),
-    dateOfJoining: z.date(),
-    designation: z.string(),
-    insuranceId: z.number(),
-    employeeId: z.string(),
-    mobileNumber: z.number(),
-    gender: z.string(),
-    dateOfBirth: z.date(),
+    username: z.string().optional(),
+    email: z.string().optional(),
+    dateOfJoining: z.date().optional(),
+    designation: z.string().optional(),
+    insuranceId: z.number().optional(),
+    employeeId: z.string().optional(),
+    mobileNumber: z.number().optional(),
+    gender: z.string().optional(),
+    dateOfBirth: z.date().optional(),
+    dependents: z.array(
+        z.object({
+            id: z.number().optional(),
+            name: z.string().optional(),
+            relation: z.string().optional(),
+            dateOfBirth: z.date().optional(),
+        })
+    ).optional(),
 })
 
 export const employeeRouter = createTRPCRouter({
     createEmployee: protectedProcedure
         .input(createEmployeeSchema)
         .mutation(async ({ ctx, input }) => {
-            const { designation, dateOfJoining, insuranceId, employeeId, email, username } = input
+            const { designation, dateOfJoining, insuranceId, employeeId, email, username, dependents } = input
 
             if (ctx.session?.user?.role !== 'HR_MANAGER') {
                 throw new TRPCError({
@@ -55,8 +70,16 @@ export const employeeRouter = createTRPCRouter({
                     dateOfJoining,
                     insurance: { connect: { id: insuranceId } },
                     username,
-                    employeeId
-                }
+                    employeeId,
+                    Dependent: {
+                        create: dependents.map((dependent) => ({
+                            name: dependent.name,
+                            relation: dependent.relation,
+                            dateOfBirth: dependent.dateOfBirth,
+                        }))
+                    }
+                },
+                include: {Dependent: true}
             })
 
             return employee
@@ -82,10 +105,10 @@ export const employeeRouter = createTRPCRouter({
         }),
     updateEmployee: protectedProcedure
         .input(updateEmployeeSchema)
-        .mutation(async ({ctx, input}) => {
-            const { id, designation, dateOfJoining, insuranceId, employeeId, email, username, gender, mobileNumber, dateOfBirth } = input
+        .mutation(async ({ ctx, input }) => {
+            const { id, designation, dateOfJoining, insuranceId, employeeId, email, username, gender, mobileNumber, dateOfBirth, dependents} = input
 
-            if(ctx.session?.user?.role !== 'HR_MANAGER'){
+            if (ctx.session?.user?.role !== 'HR_MANAGER') {
                 throw new TRPCError({
                     code: "UNAUTHORIZED",
                     message: "Only HR managers can view employees",
@@ -93,10 +116,10 @@ export const employeeRouter = createTRPCRouter({
             }
 
             const existingEmployee = await ctx.db.employee.findUnique({
-                where: {id}
+                where: { id }
             })
 
-            if(!existingEmployee){
+            if (!existingEmployee) {
                 throw new TRPCError({
                     code: "NOT_FOUND",
                     message: "Employee is not presesnt in the company",
@@ -104,17 +127,26 @@ export const employeeRouter = createTRPCRouter({
             }
 
             const employee = await ctx.db.employee.update({
-                where: {id},
+                where: { id },
                 data: {
                     designation,
                     dateOfJoining,
                     insurance: { connect: { id: insuranceId } },
                     username,
-                    employeeId
-                }
+                    employeeId,
+                    Dependent: {
+                        update: dependents?.map((dependent) => ({
+                            where: {id: dependent.id},
+                            data: {
+                                name: dependent.name,
+                                relation: dependent.relation,
+                                dateOfBirth: dependent.dateOfBirth,
+                            }
+                        }))
+                    }
+                },
+                include: {Dependent: true}
             })
-
-            //need to add dependent logic here too
 
             const existingUser = await ctx.db.user.findUnique({
                 where: { email: email }
@@ -128,7 +160,7 @@ export const employeeRouter = createTRPCRouter({
             }
 
             await ctx.db.user.update({
-                where: {email: email},
+                where: { email: email },
                 data: {
                     email,
                     gender,
@@ -140,11 +172,11 @@ export const employeeRouter = createTRPCRouter({
             return employee
         }),
     deleteEmployee: protectedProcedure
-        .input(z.object({id: z.number()}))
-        .mutation(async ({ctx, input}) => {
-            const {id} = input;
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ ctx, input }) => {
+            const { id } = input;
 
-            if(ctx.session?.user?.role !== 'HR_MANAGER'){
+            if (ctx.session?.user?.role !== 'HR_MANAGER') {
                 throw new TRPCError({
                     code: "UNAUTHORIZED",
                     message: "Only HR managers can view employees",
@@ -152,7 +184,7 @@ export const employeeRouter = createTRPCRouter({
             }
 
             const employee = await ctx.db.employee.delete({
-                where: {id: id},
+                where: { id: id },
                 include: {
                     Dependent: true,
                 },
