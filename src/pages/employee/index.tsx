@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Box, Button, Tabs, Tab, Divider, Typography } from '@mui/material';
-import Sidebar from '../Component/Sidebar';
-import EmployeeList from '../Component/EmployeeList';
-import EmployeeDetails from '../Component/EmployeeDetails';
+import Sidebar from '../../Component/Sidebar';
+import EmployeeList from '../../Component/EmployeeList';
+import EmployeeDetails from '../../Component/EmployeeDetails';
 
 interface Employee {
   name: string;
@@ -79,9 +79,6 @@ const Employees = () => {
           </Box>
         </Box>
       </Box>
-      {/* <Box sx={{ backgroundColor: '#e5e7eb', color: '#4b5563', textAlign: 'center', padding: '0.5rem' }}>
-        Powered By <span style={{ fontWeight: 'bold' }}>FrishaPolicy</span>
-      </Box> */}
     </Box>
   );
 };
