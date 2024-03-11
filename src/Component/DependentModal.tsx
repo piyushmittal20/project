@@ -4,7 +4,7 @@ import { Box, Typography, TextField, Button, Modal } from '@mui/material';
 interface Dependent {
   name: string;
   relation: string;
-  dob: string;
+  dateOfBirth: string;
 }
 
 interface DependentModalProps {
@@ -16,15 +16,15 @@ interface DependentModalProps {
 const DependentModal: React.FC<DependentModalProps> = ({ open, onClose, onSave }) => {
   const [name, setName] = useState('');
   const [relation, setRelation] = useState('');
-  const [dob, setDob] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
 
   const handleSave = () => {
-    const dependent: Dependent = { name, relation, dob };
+    const dependent: Dependent = { name, relation, dateOfBirth };
     onSave(dependent);
     onClose();
     setName('');
     setRelation('');
-    setDob('');
+    setDateOfBirth('');
   };
 
   return (
@@ -48,7 +48,14 @@ const DependentModal: React.FC<DependentModalProps> = ({ open, onClose, onSave }
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }}>
           <TextField label="Dependent Name" value={name} onChange={(e) => setName(e.target.value)} />
           <TextField label="Relation" value={relation} onChange={(e) => setRelation(e.target.value)} />
-          <TextField label="Date of Birth" placeholder="dd/mm/yy" value={dob} onChange={(e) => setDob(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <TextField
+              label="Date of Birth"
+              type="date"
+              name="dateOfBirth"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
         </Box>
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
           <Button variant="contained" color="primary" onClick={handleSave}>

@@ -5,7 +5,7 @@ import { createTRPCRouter, protectedProcedure } from "../trpc";
 const dependentSchema = z.object({
     name: z.string(),
     relation: z.string(),
-    dateOfBirth: z.date(),
+    dateOfBirth: z.string(),
     employeeId: z.optional(z.number())
 })
 
@@ -13,7 +13,7 @@ const updateDependentSchema = z.object({
     id: z.number(),
     name: z.string(),
     relation: z.string(),
-    dateOfBirth: z.date(),
+    dateOfBirth: z.string(),
 })
 
 export const dependentRouter = createTRPCRouter({

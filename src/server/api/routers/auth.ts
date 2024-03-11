@@ -48,6 +48,16 @@ export const authRouter = createTRPCRouter({
                 },
             });
 
+            // const result = await ctx.db.insurance.create({
+            //     data: {
+            //         claimAmount: 400000,
+            //         name: 'Group Health Insurance',
+            //         description: 'Employee and family covered',
+            //     }
+            // })
+
+            // console.log(result, 'result')
+
             return user;
         }),
 })

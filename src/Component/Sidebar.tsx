@@ -1,39 +1,72 @@
-/* eslint-disable @next/next/no-img-element */
-import React from 'react';
-import { Box, List, ListItem, ListItemText, Typography } from '@mui/material';
+import React from "react";
+import {
+  Avatar,
+  Box,
+  List,
+  ListItem,
+  ListItemText,
+  Typography,
+} from "@mui/material";
+import { NotificationsOutlined, HomeMiniOutlined, ListAltOutlined, Person2Outlined, AddBoxOutlined, LocalHospital, PersonOutline } from "@mui/icons-material";
 
 const Sidebar = () => {
   return (
-    <Box sx={{ backgroundColor: '#0072c6', color: 'white', height: '100vh', padding: '1rem' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', marginBottom: '2rem' }}>
-        <Typography variant="h6" fontWeight="bold">
-          Mitsubishi
-        </Typography>
+    <Box
+      sx={{
+        backgroundColor: "#ffffff",
+        color: "#191919",
+        height: "100vh",
+        width: '250px',
+      }}
+      className="border-r-2"
+    >
+      <Box className="flex items-start justify-center ">
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+          }}
+          className="w-full border-b-2 py-5 pl-5"
+        >
+          <Avatar sizes="small">{ "A"}</Avatar>
+          <Typography fontWeight="normal" className="text-center">
+            Employee Name
+          </Typography>
+        </Box>
       </Box>
-      <List>
-        <ListItem button>
-          <ListItemText primary="Notifications" />
+      <List className="">
+        <ListItem button className="pr-12">
+          <NotificationsOutlined />
+          <ListItemText
+            className="pl-3 font-semibold"
+            primary="Notifications"
+          />
+        </ListItem>
+
+        <ListItem button className="pr-12">
+          <HomeMiniOutlined />
+          <ListItemText className="pl-3 font-semibold" primary="Home" />
+        </ListItem>
+        <ListItem button className="pr-12">
+          <ListAltOutlined />
+          <ListItemText className="pl-3 font-semibold" primary="Plans" />
+        </ListItem>
+        <ListItem button className="bg-[#edf5ff] text-[#6370af]">
+          <Person2Outlined />
+          <ListItemText className="pl-3 font-semibold" primary="Dependents" />
         </ListItem>
         <ListItem button>
-          <ListItemText primary="Home" />
+          <AddBoxOutlined />
+          <ListItemText className="pl-3 font-semibold" primary="Claims" />
         </ListItem>
-        <ListItem button>
-          <ListItemText primary="Plans" />
+        <ListItem button className="pr-12">
+          <LocalHospital />
+          <ListItemText className="pl-3 font-semibold" primary="Hospitals" />
         </ListItem>
-        <ListItem button>
-          <ListItemText primary="Employees" />
-        </ListItem>
-        <ListItem button>
-          <ListItemText primary="Claims" />
-        </ListItem>
-        <ListItem button>
-          <ListItemText primary="Corporate Claims" />
-        </ListItem>
-        <ListItem button>
-          <ListItemText primary="Hospitals" />
-        </ListItem>
-        <ListItem button>
-          <ListItemText primary="Profile" />
+        <ListItem button className="pr-12">
+          <PersonOutline />
+          <ListItemText className="pl-3 font-semibold" primary="Profile" />
         </ListItem>
       </List>
     </Box>

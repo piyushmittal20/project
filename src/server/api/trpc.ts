@@ -15,7 +15,7 @@ import { TRPCError, initTRPC } from "@trpc/server";
 import { type CreateNextContextOptions } from "@trpc/server/adapters/next";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
 import { db } from "~/server/db";
 import { authOptions } from "~/pages/api/auth/[...nextauth]"
 
@@ -113,7 +113,6 @@ const isAuthed = t.middleware(({ ctx, next }) => {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "You are not authenticated" });
   }
 
-  console.log(ctx, '116')
   return next({
     ctx: {
       user: ctx.session.user,

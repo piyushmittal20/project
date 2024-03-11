@@ -6,7 +6,7 @@ import { createTRPCRouter, protectedProcedure } from "../trpc";
 const createEmployeeSchema = z.object({
     username: z.string(),
     email: z.string(),
-    dateOfJoining: z.date(),
+    dateOfJoining: z.string(),
     designation: z.string(),
     insuranceId: z.number(),
     employeeId: z.string(),
@@ -14,29 +14,55 @@ const createEmployeeSchema = z.object({
         z.object({
             name: z.string(),
             relation: z.string(),
-            dateOfBirth: z.date(),
+            dateOfBirth: z.string(),
         })
     ),
 })
+const createBulkEmployeesSchema = z.array(
+    z.object({
+        username: z.string(),
+        email: z.string(),
+        dateOfJoining: z.date(),
+        designation: z.string(),
+        insuranceId: z.number(),
+        employeeId: z.string(),
+        dependents: z.array(
+            z.object({
+                name: z.string(),
+                relation: z.string(),
+                dateOfBirth: z.date(),
+            })
+        ),
+    })
+)
+
 const updateEmployeeSchema = z.object({
     id: z.number(),
     username: z.string().optional(),
-    email: z.string().optional(),
     dateOfJoining: z.date().optional(),
     designation: z.string().optional(),
-    insuranceId: z.number().optional(),
+    insuranceId: z.number(),
     employeeId: z.string().optional(),
-    mobileNumber: z.number().optional(),
-    gender: z.string().optional(),
-    dateOfBirth: z.date().optional(),
-    dependents: z.array(
+    user: z.object({
+        email: z.string(),
+        mobileNumber: z.bigint(),
+        gender: z.string()
+    }),
+    dependentsToCreate: z.array(
         z.object({
-            id: z.number().optional(),
-            name: z.string().optional(),
-            relation: z.string().optional(),
-            dateOfBirth: z.date().optional(),
+            name: z.string(),
+            relation: z.string(),
+            dateOfBirth: z.date()
         })
     ).optional(),
+    dependentsToUpdate: z.array(
+        z.object({
+            id: z.number(),
+            name: z.string(),
+            relation: z.string(),
+            dateOfBirth: z.date()
+        })
+    )
 })
 
 export const employeeRouter = createTRPCRouter({
@@ -67,7 +93,7 @@ export const employeeRouter = createTRPCRouter({
                 data: {
                     user: { connect: { id: user.id } },
                     designation,
-                    dateOfJoining,
+                    dateOfJoining: new Date(dateOfJoining),
                     insurance: { connect: { id: insuranceId } },
                     username,
                     employeeId,
@@ -75,7 +101,7 @@ export const employeeRouter = createTRPCRouter({
                         create: dependents.map((dependent) => ({
                             name: dependent.name,
                             relation: dependent.relation,
-                            dateOfBirth: dependent.dateOfBirth,
+                            dateOfBirth: new Date(dependent.dateOfBirth),
                         }))
                     }
                 },
@@ -97,16 +123,37 @@ export const employeeRouter = createTRPCRouter({
                 include: {
                     user: true,
                     Dependent: true,
-                    insurance: true,
                 },
             })
 
             return employees;
         }),
+    getEmployeeDetail: protectedProcedure
+        .input(z.object({ id: z.number() }))
+        .query(async ({ctx, input}) => {
+            const {id} = input;
+
+            if (ctx.session?.user?.role !== 'HR_MANAGER') {
+                throw new TRPCError({
+                    code: "UNAUTHORIZED",
+                    message: "Only HR managers can view employees",
+                });
+            }
+
+            const employee = await ctx.db.employee.findUnique({
+                where: {id},
+                include: {
+                    user: true,
+                    Dependent: true,
+                },
+            }, )
+
+            return employee;
+        }),
     updateEmployee: protectedProcedure
         .input(updateEmployeeSchema)
         .mutation(async ({ ctx, input }) => {
-            const { id, designation, dateOfJoining, insuranceId, employeeId, email, username, gender, mobileNumber, dateOfBirth, dependents} = input
+            const { id, designation, dateOfJoining, insuranceId, employeeId, username, user, dependentsToCreate, dependentsToUpdate} = input
 
             if (ctx.session?.user?.role !== 'HR_MANAGER') {
                 throw new TRPCError({
@@ -135,13 +182,20 @@ export const employeeRouter = createTRPCRouter({
                     username,
                     employeeId,
                     Dependent: {
-                        update: dependents?.map((dependent) => ({
-                            where: {id: dependent.id},
+                        create: dependentsToCreate?.map((dependent) => ({
+                            name: dependent.name,
+                            relation: dependent.relation,
+                            dateOfBirth: new Date(dependent.dateOfBirth),   
+                        })),
+                        updateMany: dependentsToUpdate?.map((dependent) => ({
+                            where: {
+                                id: dependent.id,
+                            },
                             data: {
                                 name: dependent.name,
                                 relation: dependent.relation,
-                                dateOfBirth: dependent.dateOfBirth,
-                            }
+                                dateOfBirth: new Date(dependent.dateOfBirth),
+                            },
                         }))
                     }
                 },
@@ -149,7 +203,7 @@ export const employeeRouter = createTRPCRouter({
             })
 
             const existingUser = await ctx.db.user.findUnique({
-                where: { email: email }
+                where: { email: user.email }
             })
 
             if (!existingUser) {
@@ -160,12 +214,11 @@ export const employeeRouter = createTRPCRouter({
             }
 
             await ctx.db.user.update({
-                where: { email: email },
+                where: { email: user.email },
                 data: {
-                    email,
-                    gender,
-                    mobileNumber,
-                    dateOfBirth
+                    email: user.email,
+                    gender: user.gender,
+                    mobileNumber: user.mobileNumber,
                 }
             })
 
@@ -183,21 +236,78 @@ export const employeeRouter = createTRPCRouter({
                 });
             }
 
-            const employee = await ctx.db.employee.delete({
-                where: { id: id },
+            const employee = await ctx.db.employee.findUnique({
+                where: {id},
                 include: {
-                    Dependent: true,
-                },
+                    Dependent: true
+                }
             })
 
-            await Promise.all(
-                employee.Dependent.map(async (dependent) => {
-                    await ctx.db.dependent.delete({
-                        where: { id: dependent.id },
-                    });
-                })
-            )
+            if (employee?.Dependent) {
+                await Promise.all(
+                    employee.Dependent.map(async (dependent) => {
+                        await ctx.db.dependent.delete({
+                            where: { id: dependent.id },
+                        });
+                    })
+                )
+            }
 
-            return employee
+            await ctx.db.employee.delete({
+                where: { id: id },
+            })
+
+            return employee;
+        }),
+    createBulkEmployees: protectedProcedure
+        .input(createBulkEmployeesSchema)
+        .mutation(async({ctx, input}) => {
+            if (ctx.session?.user?.role !== 'HR_MANAGER') {
+                throw new TRPCError({
+                    code: "UNAUTHORIZED",
+                    message: "Only HR managers can view employees",
+                });
+            }
+
+            const employees = input;
+
+            for(const employee of employees) {
+                const existingUser = await ctx.db.user.findUnique({
+                    where: {email: employee.email}
+                })
+
+                if(!existingUser) {
+                    throw new TRPCError({
+                        code: "NOT_FOUND",
+                        message: "No user found with this email id.",
+                    });
+                }
+
+                await ctx.db.employee.create({
+                    data: {
+                        dateOfJoining: employee.dateOfJoining,
+                        designation: employee.designation,
+                        user: {
+                            connect: {
+                                id: existingUser.id,
+                            },
+                        },
+                        employeeId: employee.employeeId,
+                        username: employee.username,
+                        insurance: {connect: {
+                            id: employee.insuranceId
+                        }},
+                        Dependent: {
+                            create: employee.dependents.map((dependent) => ({
+                                name: dependent.name,
+                                dateOfBirth: new Date(dependent.dateOfBirth),
+                                relation: dependent.relation
+                            }))
+                        }
+                    }
+                })
+
+                return "Employees added successfully!!"
+            }
         })
 })
