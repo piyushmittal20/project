@@ -29,13 +29,13 @@ export default function Home() {
   // const mutation = api.employee.deleteEmployee.useMutation()
   // const mutation = api.employee.updateEmployee.useMutation()
 
-  // useEffect(() => {
-  //   if(data && data.user.role === 'HR_MANAGER'){
-  //     router.push('/employee')
-  //   } else {
-  //     router.push('/dependent')
-  //   }
-  // }, [data, router])
+  useEffect(() => {
+    if(data && data.user.role === 'HR_MANAGER'){
+      router.push('/employee')
+    } else {
+      router.push('/dependent')
+    }
+  }, [data, router])
 
   const handleLogin = async () => {
     // mutation.mutate({
