@@ -4,12 +4,12 @@ import {useForm, Controller} from 'react-hook-form';
 import * as yup from 'yup';
 import {yupResolver} from '@hookform/resolvers/yup';
 
-interface Dependent {
-  id?: string;
-  name: string;
-  relation: string;
-  dateOfBirth: Date;
-}
+// interface Dependent {
+//   id?: string;
+//   name: string;
+//   relation: string;
+//   dateOfBirth: Date;
+// }
 
 interface DependentModalProps {
   open: boolean;

@@ -45,21 +45,18 @@ const createBulkEmployeesSchema = z.array(
 const updateEmployeeSchema = z.object({
     id: z.number(),
     username: z.string(),
-    dateOfJoining: z.string(),
+    dateOfJoining: z.date(),
     designation: z.string(),
     insuranceId: z.number(),
     employeeId: z.string(),
-    user: z.object({
-        email: z.string(),
-        mobileNumber: z.bigint(),
-        gender: z.string(),
-        dateOfBirth: z.string()
-    }),
+    email: z.string(),
+    mobileNumber: z.number(),
+    gender: z.string(),
     dependentsToCreate: z.array(
         z.object({
             name: z.string(),
             relation: z.string(),
-            dateOfBirth: z.string()
+            dateOfBirth: z.date()
         })
     ).optional(),
     dependentsToUpdate: z.array(
@@ -67,7 +64,7 @@ const updateEmployeeSchema = z.object({
             id: z.number(),
             name: z.string(),
             relation: z.string(),
-            dateOfBirth: z.string()
+            dateOfBirth: z.date()
         })
     )
 })
@@ -138,7 +135,6 @@ export const employeeRouter = createTRPCRouter({
     getEmployeeDetail: protectedProcedure
         .input(z.object({ id: z.number() }))
         .query(async ({ctx, input}) => {
-            console.log(input)
             const {id} = input;
 
             if (ctx.session?.user?.role !== 'HR_MANAGER') {
@@ -174,7 +170,7 @@ export const employeeRouter = createTRPCRouter({
     updateEmployee: protectedProcedure
         .input(updateEmployeeSchema)
         .mutation(async ({ ctx, input }) => {
-            const { id, designation, dateOfJoining, insuranceId, employeeId, username, user, dependentsToCreate, dependentsToUpdate} = input
+            const { id, designation, dateOfJoining, insuranceId, employeeId, username, email, mobileNumber, gender, dependentsToCreate, dependentsToUpdate} = input
 
             if (ctx.session?.user?.role !== 'HR_MANAGER') {
                 throw new TRPCError({
@@ -224,7 +220,7 @@ export const employeeRouter = createTRPCRouter({
             })
 
             const existingUser = await ctx.db.user.findUnique({
-                where: { email: user.email }
+                where: { email }
             })
 
             if (!existingUser) {
@@ -235,12 +231,11 @@ export const employeeRouter = createTRPCRouter({
             }
 
             const updatedUser = await ctx.db.user.update({
-                where: { email: user.email },
+                where: { email },
                 data: {
-                    email: user.email,
-                    gender: user.gender,
-                    mobileNumber: user.mobileNumber,
-                    dateOfBirth: user.dateOfBirth
+                    email,
+                    gender,
+                    mobileNumber,
                 }
             })
 
@@ -331,11 +326,11 @@ export const employeeRouter = createTRPCRouter({
                         }
                     }
                 })
+            }
 
-                return {
-                    message: "Employees added successfully!!",
-                    success: true
-                }
+            return {
+                message: "Employees added successfully!!",
+                success: true
             }
         })
 })

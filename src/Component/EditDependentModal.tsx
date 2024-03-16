@@ -4,21 +4,21 @@ import { Controller, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 
-interface Dependent {
-    id: number;
-    name: string;
-    relation: string;
-    dateOfBirth: Date;
-    employeeId: number;
-}
+// interface Dependent {
+//     id: number;
+//     name: string;
+//     relation: string;
+//     dateOfBirth: Date;
+//     employeeId: number;
+// }
 
 // type EditFormStateType = yup.InferType<typeof schema>
 
 interface EditDependentModalProps {
     open: boolean;
     onClose: () => void;
-    onSubmit: (data: Partial<Dependent>) => void;
-    initialFormState: Partial<Dependent>;
+    onSubmit: (data: Dependent) => void;
+    initialFormState: Dependent;
 }
 
 const schema = yup.object().shape({
@@ -30,7 +30,7 @@ const schema = yup.object().shape({
 
 
 const EditDependentModal: React.FC<EditDependentModalProps> = ({ open, onClose, onSubmit, initialFormState }) => {
-    const { control, handleSubmit, reset, formState: { errors } } = useForm({
+    const { control, handleSubmit, reset, formState: { errors } } = useForm<Dependent>({
         resolver: yupResolver(schema),
         defaultValues: {
             name: '',
@@ -45,7 +45,7 @@ const EditDependentModal: React.FC<EditDependentModalProps> = ({ open, onClose, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialFormState])
 
-    const handleModalSubmit = (data: Partial<Dependent>) => {
+    const handleModalSubmit = (data: Dependent) => {
         onSubmit(data);
     };
 
@@ -54,11 +54,11 @@ const EditDependentModal: React.FC<EditDependentModalProps> = ({ open, onClose, 
         open={open}
         onClose={onClose}
         sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
         }}
-      >
+        >
         <Box
           sx={{
             position: 'absolute',

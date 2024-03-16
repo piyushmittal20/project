@@ -1,6 +1,7 @@
 import { type AppType } from "next/app";
 import { Inter } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
+import { Toaster } from 'react-hot-toast';
 
 import { api } from "~/utils/api";
 
@@ -16,6 +17,7 @@ const MyApp: AppType = ({ Component, pageProps }) => {
     <SessionProvider>
       <main  className={`font-sans ${inter.variable}`}>
         <Component {...pageProps} />
+        <Toaster />
       </main>
     </SessionProvider>
   );

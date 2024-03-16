@@ -17,6 +17,8 @@ import {
   Search,
   Filter,
   Download,
+  PeopleAltOutlined,
+  CrisisAlertOutlined,
 } from "@mui/icons-material";
 import Link from "next/link";
 import Sidebar from '../../Component/Sidebar';
@@ -25,25 +27,25 @@ import EmployeeDetails from '../../Component/EmployeeDetails';
 import {api} from "~/utils/api"
 import BulkUploadModal from '~/Component/BulkUploadModal';
 
-interface Employee {
-  username: string;
-  role: string;
-  employeeId: string;
-  id: number;
-  designation: string;
-  user: {
-    id: number;
-    name: string;
-  },
-  Dependent: [
-    {
-        id: number;
-        name: string;
-        relation: string;
-        dateOfBirth: Date
-    }
-  ]
-}
+// interface Employee {
+//   username: string;
+//   role: string;
+//   employeeId: string;
+//   id: number;
+//   designation: string;
+//   user: {
+//     id: number;
+//     name: string;
+//   },
+//   Dependent: [
+//     {
+//         id: number;
+//         name: string;
+//         relation: string;
+//         dateOfBirth: Date
+//     }
+//   ]
+// }
 
 const Employees: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
@@ -137,9 +139,15 @@ const Employees: React.FC = () => {
               }}
             >
               <Link href="/employee/add">
-                <MenuItem sx={{ width: 210, maxWidth: '100%' }}>Single Entry</MenuItem>
+                <MenuItem sx={{ width: 210, maxWidth: "100%" }}>
+                  <PersonAddAlt1Outlined className="mr-2 pr-1" />
+                  Single Entry
+                </MenuItem>
               </Link>
-                <MenuItem onClick={() => setBulkModalIsOpen(true)}>Bulk Entry</MenuItem>
+              <MenuItem onClick={() => setBulkModalIsOpen(true)}>
+                <PeopleAltOutlined className="mr-2 pr-1" />
+                Bulk Entry
+              </MenuItem>
             </Menu>
           </Box>
         </Box>
@@ -194,15 +202,32 @@ const Employees: React.FC = () => {
               </Box>
             </Box>
             <Divider />
+            {listEmployees!== undefined && Array.isArray(listEmployees) && (
             <EmployeeList
               employees={listEmployees}
               onEmployeeSelect={handleEmployeeSelect}
               selectedEmployee={selectedEmployee}
             />
+            )}
           </Box>
           <Box sx={{ flex: 1, marginRight: "8px" }}>
-            {selectedEmployee && (
+            {selectedEmployee ? (
               <EmployeeDetails employee={selectedEmployee} />
+            ) : (
+              <Box
+                className=" ml-6 flex min-h-[75vh] items-center justify-center border-l"
+                sx={{ flex: 1 }}
+              >
+                <Box sx={{ margin: "auto", textAlign: "center" }}>
+                  <CrisisAlertOutlined fontSize="medium" />
+                  <Typography className="mt-2 text-lg font-semibold">
+                    No Employee Selected
+                  </Typography>
+                  <Typography className=" text-sm font-light">
+                    Please select an employee to view details
+                  </Typography>
+                </Box>
+              </Box>
             )}
           </Box>
         </Box>

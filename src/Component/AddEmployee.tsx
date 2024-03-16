@@ -13,29 +13,30 @@ import {yupResolver} from '@hookform/resolvers/yup';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone';
+import toast from 'react-hot-toast';
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
-interface Dependent {
-  id?: number;
-  name: string;
-  relation: string;
-  dateOfBirth: Date | null;
-}
+// interface Dependent {
+//   id?: number;
+//   name: string;
+//   relation: string;
+//   dateOfBirth: Date | null;
+// }
 
-interface EmployeeData {
-  id?: string;
-  username: string;
-  employeeId: string;
-  designation: string;
-  dateOfJoining: Date;
-  gender: 'Male' | 'Female';
-  mobileNumber: string;
-  email: string;
-  dependents: Dependent[];
-  insuranceId?: number
-}
+// interface EmployeeData {
+//   id?: string;
+//   username: string;
+//   employeeId: string;
+//   designation: string;
+//   dateOfJoining: Date;
+//   gender: 'Male' | 'Female';
+//   mobileNumber: string;
+//   email: string;
+//   dependents: Dependent[];
+//   insuranceId?: number
+// }
 
 interface AddEmployeeProps {
   initialData?: EmployeeData;
@@ -47,10 +48,11 @@ const schema = yup.object().shape({
   designation: yup.string().required('Employee Designation is required'),
   dateOfJoining: yup.date().required('Date of Joining is required'),
   gender: yup.mixed<'Male' | 'Female'>().oneOf(['Male', 'Female']).required('Gender is required'),
-  mobileNumber: yup.string().required('Mobile Number is required'),
+  mobileNumber: yup.number().required('Mobile Number is required'),
   email: yup.string().email('Invalid email address').required('Email is required'),
   dependents: yup.array().of(
     yup.object().shape({
+      id: yup.number().optional(),
       name: yup.string().required('Dependent Name is required'),
       relation: yup.string().required('Relation is required'),
       dateOfBirth: yup.date().required('Date of Birth is required'),
@@ -63,36 +65,35 @@ const AddEmployee: React.FC<AddEmployeeProps> = () => {
   const updateMutation = api.employee.updateEmployee.useMutation()
   const router = useRouter()
   const {query} = router;
-  const dependentId = query?.id as string | undefined;
+  const employeeId = query?.id as string | undefined;
 
-  const {data: employeeDetails, isLoading} = api.employee.getEmployeeDetail.useQuery({id: Number(dependentId)}, {enabled: dependentId != null})
+  const {data: employeeDetails} = api.employee.getEmployeeDetail.useQuery({id: Number(employeeId)}, {enabled: employeeId != null})
 
   const [open, setOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editData, setEditData] = useState({})
+  const [editData, setEditData] = useState({} as unknown as Dependent)
 
-  const { control, handleSubmit, reset, formState: { errors } } = useForm({
+  const { control, handleSubmit, reset, formState: { errors } } = useForm<NonNullable<EmployeeData>>({
     resolver: yupResolver(schema),
-    // defaultValues: {
-    //   username: '',
-    //   employeeId: '',
-    //   designation: '',
-    //   dateOfJoining: null,
-    //   gender: 'Male',
-    //   mobileNumber: '',
-    //   email: '',
-    //   dependents: [],
-    //   insuranceId: 1,
-    // },
+    defaultValues: {
+      username: '',
+      employeeId: '',
+      designation: '',
+      dateOfJoining: undefined,
+      gender: 'Male',
+      email: '',
+      dependents: [],
+      insuranceId: 1
+    },
   });
 
-  const { fields, append, remove, update } = useFieldArray<EmployeeData, 'dependents', Dependent>({
+  const { fields, append, remove, update } = useFieldArray<NonNullable<EmployeeData>, 'dependents', 'key'>({
     control,
     name: 'dependents',
+    keyName: "key"
   });
 
   useEffect(() => {
-    console.log(employeeDetails, 'alljlajlj')
     if(employeeDetails){
       reset(employeeDetails)
     }
@@ -121,15 +122,16 @@ const AddEmployee: React.FC<AddEmployeeProps> = () => {
     remove(index);
   };
 
-  const handleEditDependent = (id: number) => {
-    const field: Dependent[] = fields.filter((field) => field.id === id)
-    const dependentSelected: Dependent = field[0];
-    const dateOfBirth = dayjs.utc(new Date(dependentSelected.dateOfBirth!).toISOString()).local().tz('Asia/Kolkata').format('YYYY-MM-DD')
-    if(dateOfBirth){
-      dependentSelected.dateOfBirth = dateOfBirth
-    }
-    setEditData(dependentSelected)
-    setIsModalOpen(true);
+  const handleEditDependent = (key: string) => {
+    const field = fields.find((field) => field.key === key)
+    if(field){
+      const dateOfBirth = dayjs.utc(new Date(field.dateOfBirth).toISOString()).local().tz('Asia/Kolkata').format('YYYY-MM-DD')
+      if(dateOfBirth){
+        field.dateOfBirth = dateOfBirth as unknown as Date
+      }
+      setEditData(field)
+      setIsModalOpen(true);
+  }
   }
 
   // const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLElement>, isToggle?: boolean) => {
@@ -146,8 +148,41 @@ const AddEmployee: React.FC<AddEmployeeProps> = () => {
   //   }
   // };
 
-  const submitHandler = (data: Partial<EmployeeData>) => {
+  const submitHandler = (data: NonNullable<EmployeeData>) => {
+    if(employeeId == null){
+      data.insuranceId = 1;
+      mutation.mutate(data, {
+        onSuccess: () => {
+          toast.success("Employee created successfully!!")
+          router.push('/employee');
+        },
+        onError: () => {
+          toast.error("Failed to add employee")
+        }
+      })
+    } else {
+      if(data.dependents){
+        data.dependentsToCreate = [];
+        data.dependentsToUpdate = [];
+        data.dependents.forEach((dependent) => {
+          if(dependent.id){
+            data.dependentsToUpdate.push(dependent)
+          } else {
+            data.dependentsToCreate.push(dependent)
+          }
+        })
+      }
 
+      updateMutation.mutate(data, {
+        onSuccess: () => {
+          toast.success("Employee updated successfully!!")
+          router.push('/employee');
+        },
+        onError: () => {
+          toast.error("Failed to update employee")
+        }
+      })
+    }
   };
 
   const openModal = () => {
@@ -158,7 +193,6 @@ const AddEmployee: React.FC<AddEmployeeProps> = () => {
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
       <Sidebar />
-      {isLoading ? <h1>Loading...</h1> : (
       <Box
         sx={{
           flex: 1,
@@ -190,7 +224,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = () => {
             <Button
               className="font"
               variant="outlined"
-              color="primary"
+              color="error"
               href='/employee'
               sx={{ textTransform: "none", fontWeight: "light" }}
             >
@@ -265,7 +299,6 @@ const AddEmployee: React.FC<AddEmployeeProps> = () => {
             <Controller
                 name="dateOfJoining"
                 control={control}
-                defaultValue={new Date()}
                 render={({ field }) => (
                   <TextField
                     {...field}
@@ -343,7 +376,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = () => {
               <Divider />
               {fields.map((field, index) => (
                 <Box
-                  key={index}
+                  key={field.key}
                   className=" rounded-md"
                   sx={{
                     display: "flex",
@@ -364,19 +397,20 @@ const AddEmployee: React.FC<AddEmployeeProps> = () => {
                       marginY: "2px",
                       marginTop: "4px",
                       padding: "3px",
+                      paddingLeft:"7px"
                     }}
                   >
                     <Avatar>{field.name.charAt(0)}</Avatar>
                     <Box className=" pl-2">
                       <Typography variant="h6">{field.name}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {new Date(field.dateOfBirth!).toLocaleDateString()} | {field.relation}
+                        {new Date(field.dateOfBirth).toLocaleDateString()} | {field.relation}
                       </Typography>
                     </Box>
                   </Box>
                   <Box className=" mr-6  flex items-center gap-2 ">
                     <EditOutlined className="cursor-pointer pl-1" 
-                      onClick={() => handleEditDependent(field.id!)}
+                      onClick={() => handleEditDependent(field.key)}
                     />
                     <DeleteOutline className=" cursor-pointer pl-1 text-orange-600" 
                       onClick={() => handleDeleteDependent(index)} 
@@ -386,7 +420,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = () => {
               ))}
               <Box
                 onClick={openModal}
-                className=" cursor-pointer rounded-md bg-[#edf5ff]"
+                className=" cursor-pointer rounded-md bg-[#edf5ff] mt-4"
                 sx={{
                   display: "flex",
                   alignItems: "center",
@@ -473,7 +507,6 @@ const AddEmployee: React.FC<AddEmployeeProps> = () => {
           </Box>
         </Box>
       </Box>
-      )}
       <DependentModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}

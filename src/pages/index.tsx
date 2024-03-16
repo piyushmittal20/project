@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import React, {useState, useEffect} from "react";
-// import Head from "next/head";
-// import Link from "next/link";
 import {signIn, useSession} from 'next-auth/react'
 import {useRouter} from 'next/router'
 import { Box, Typography, TextField, Button } from '@mui/material';
@@ -29,18 +27,18 @@ export default function Home() {
   // const mutation = api.employee.deleteEmployee.useMutation()
   // const mutation = api.employee.updateEmployee.useMutation()
 
-  // useEffect(() => {
-  //   if(data && data.user.role === 'HR_MANAGER'){
-  //     router.push('/employee')
-  //   } else {
-  //     router.push('/dependent')
-  //   }
-  // }, [data, router])
+  useEffect(() => {
+    if(data && data.user.role === 'HR_MANAGER'){
+      router.push('/employee')
+    } else {
+      router.push('/dependent')
+    }
+  }, [data, router])
 
   const handleLogin = async () => {
     // mutation.mutate({
-    //   name: 'User7',
-    //   email: 'user7@gmail.com',
+    //   name: 'User15',
+    //   email: 'user15@gmail.com',
     //   gender: 'Female',
     //   mobileNumber: 8672687546,
     //   role: 'EMPLOYEE',
@@ -122,7 +120,8 @@ export default function Home() {
     >
       <Box
         className="bg-white p-8 rounded-lg shadow-md"
-        maxWidth={400}
+        maxWidth={500}
+        height='25em'
         borderRadius={8}
         boxShadow={3}
         padding={4}
@@ -169,9 +168,3 @@ export default function Home() {
     </Box>
   );
 }
-
-
-// 3 dependent,
-// 1 employee
-// 1 HR
-// 1 user

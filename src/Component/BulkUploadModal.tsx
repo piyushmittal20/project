@@ -4,12 +4,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { Box, Typography, Button, Dialog, DialogContent, IconButton } from '@mui/material';
+import { Box, Typography, Button, Dialog, DialogContent } from '@mui/material';
 import { useDropzone } from 'react-dropzone';
 import CloseIcon from '@mui/icons-material/Close';
 import dayjs from 'dayjs';
 import {api} from '~/utils/api'
-import {useRouter} from 'next/router'
+import toast from 'react-hot-toast';
 
 interface Employee {
   empCode: string;
@@ -30,7 +30,7 @@ const BulkUploadModal: React.FC<BulkUploadtModalProps> = ({open, onClose}) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
 
   const mutation = api.employee.createBulkEmployees.useMutation();
-  const router = useRouter()
+  const {employee: {listEmployees: {refetch}}} = api.useUtils()
 
   const { getRootProps, getInputProps } = useDropzone({
     onDrop: (acceptedFiles) => {
@@ -51,8 +51,6 @@ const BulkUploadModal: React.FC<BulkUploadtModalProps> = ({open, onClose}) => {
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const data = XLSX.utils.sheet_to_json<Employee>(worksheet, { header: 1, raw: false });
 
-        console.log(data, 'data')
-
         const validEmployees = data
           .slice(1)
           .map((row) => ({
@@ -62,10 +60,10 @@ const BulkUploadModal: React.FC<BulkUploadtModalProps> = ({open, onClose}) => {
                 gender: row[3] as string,
                 mobileNumber: row[4] as string,
                 email: row[5] as string,
-                dateOfJoining: dayjs(row[6], 'YYYY-MM-DD').toDate(),
+                dateOfJoining: new Date(dayjs(row[6], 'D/M/YY').format()),
                 relation: row[7] as string,
                 name: row[8] as string,
-                dateOfBirth: dayjs(row[9], 'YYYY-MM-DD').toDate(),
+                dateOfBirth: new Date(dayjs(row[9], 'D/M/YY').format()),
                 insuranceId: 1
         }))
 
@@ -84,9 +82,13 @@ const BulkUploadModal: React.FC<BulkUploadtModalProps> = ({open, onClose}) => {
 
         setEmployees(validEmployees);
 
-        // mutation.mutate(validEmployees)
-
-        console.log(validEmployees)
+        mutation.mutate(validEmployees, {
+            onSuccess: () => {
+                onClose()
+                toast.success("Employees uploaded successfully from sheet")
+                refetch()
+            }
+        })
 
         };
         reader.readAsBinaryString(file);
@@ -94,15 +96,19 @@ const BulkUploadModal: React.FC<BulkUploadtModalProps> = ({open, onClose}) => {
 };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogContent>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth className=" no-scrollbar">
+      <DialogContent className=" no-scrollbar">
         <Box position="relative">
-          <IconButton onClick={onClose} sx={{ position: 'absolute', top: 8, right: 8 }}>
-            <CloseIcon />
-          </IconButton>
-          <Typography variant="h5" gutterBottom>
-            Bulk Import
-          </Typography>
+            <Box className="flex items-center justify-between pr-4">
+            <Typography  className='text-[28px]' gutterBottom>
+              Bulk Import
+            </Typography>
+
+            <CloseIcon
+              className="cursor-pointer relative bottom-2  rounded-[50%] p-1 bg-slate-300"
+              onClick={onClose}
+            />
+          </Box>
           <Box
             {...getRootProps({
               className: 'dropzone',
@@ -130,13 +136,13 @@ const BulkUploadModal: React.FC<BulkUploadtModalProps> = ({open, onClose}) => {
             </svg>
             </Box>
           </Box>
-          <Box mt={4}>
-            <Typography variant="h6" gutterBottom>
+          <Box mt={1}>
+            <Typography className=" font-light" gutterBottom>
               General Guidelines
             </Typography>
-            <ul>
+            <ul className=" list-disc pl-8 font-medium">
               <li>The file must contain the following headers:</li>
-              <ul>
+              <ul className=" list-disc pl-8">
                 <li>Emp Code</li>
                 <li>Name</li>
                 <li>Relation to Employee</li>

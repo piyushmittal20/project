@@ -1,29 +1,9 @@
 import React from 'react';
-import { Box, List, ListItem, ListItemAvatar, ListItemText, Avatar, Fab } from '@mui/material';
+import { Box, List, ListItem, ListItemAvatar, ListItemText, Avatar, } from '@mui/material';
 import { ArrowRight, CancelOutlined } from '@mui/icons-material';
 
-interface Employee {
-  username: string;
-  role: string;
-  employeeId: string;
-  id: number;
-  designation: string;
-  user: {
-    id: number;
-    name: string;
-  },
-  Dependent: [
-    {
-        id: number;
-        name: string;
-        relation: string;
-        dateOfBirth: Date
-    }
-  ]
-}
-
 interface EmployeeListProps {
-  employees: Employee[];
+  employees: Employees;
   onEmployeeSelect: (employee: Employee) => void;
   selectedEmployee: Employee | null;
 }
@@ -68,21 +48,24 @@ const EmployeeList: React.FC<EmployeeListProps> = ({
             </Box>
             <Box className="flex items-center">
             { selectedEmployee !== employee ? (
-                  <Fab
-                    size="small"
-                    sx={{ backgroundColor: "#edf5ff", color: "#6370af" }}
-                  >
-                    <ArrowRight />
-                  </Fab>
-
-                 ) : (
-                  <Fab
-                    size="small"
-                    sx={{ backgroundColor: "#1f1899", color: "white" }}
-                  >
-                    <CancelOutlined />
-                  </Fab>
-
+                <ArrowRight
+                  sx={{
+                    backgroundColor: "#edf5ff",
+                    color: "#6370af",
+                    borderRadius: "6px",
+                    fontSize: "32px",
+                  }}
+                /> 
+                ) : (
+                  <CancelOutlined
+                  sx={{
+                    backgroundColor: "#384793",
+                    color: "#ffffff",
+                    borderRadius: "6px",
+                    fontSize: "32px",
+                    padding: "4px",
+                  }}
+                  />
                 )}
             </Box>
           </ListItem>

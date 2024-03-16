@@ -1,4 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import React from "react";
+import { useSession } from "next-auth/react";
 import {
   Avatar,
   Box,
@@ -10,6 +12,9 @@ import {
 import { NotificationsOutlined, HomeMiniOutlined, ListAltOutlined, Person2Outlined, AddBoxOutlined, LocalHospital, PersonOutline } from "@mui/icons-material";
 
 const Sidebar = () => {
+
+  const {data} = useSession()
+
   return (
     <Box
       sx={{
@@ -54,7 +59,7 @@ const Sidebar = () => {
         </ListItem>
         <ListItem button className="bg-[#edf5ff] text-[#6370af]">
           <Person2Outlined />
-          <ListItemText className="pl-3 font-semibold" primary="Dependents" />
+          <ListItemText className="pl-3 font-semibold" primary={data?.user.role === "HR_MANAGER" ? 'Employees': 'Dependents'} />
         </ListItem>
         <ListItem button>
           <AddBoxOutlined />

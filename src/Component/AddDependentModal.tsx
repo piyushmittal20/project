@@ -4,18 +4,18 @@ import { Controller, useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 
-interface Dependent {
-    id: number;
-    name: string;
-    relation: string;
-    dateOfBirth: Date;
-    employeeId: number;
-}
+// interface Dependent {
+//     id: number;
+//     name: string;
+//     relation: string;
+//     dateOfBirth: Date;
+//     employeeId: number;
+// }
 
 interface AddDependentModalProps {
     open: boolean;
     onClose: () => void;
-    onSubmit: (data: Partial<Dependent>) => void;
+    onSubmit: (data: Dependent) => void;
 }
 
 const schema = yup.object().shape({
@@ -26,11 +26,11 @@ const schema = yup.object().shape({
 
 
 const AddDependentModal: React.FC<AddDependentModalProps> = ({ open, onClose, onSubmit }) => {
-    const { control, handleSubmit, reset, formState: { errors } } = useForm({
+    const { control, handleSubmit, reset, formState: { errors } } = useForm<Dependent>({
         resolver: yupResolver(schema),
     });
 
-    const handleModalSubmit = (data: Partial<Dependent>) => {
+    const handleModalSubmit = (data: Dependent) => {
         onSubmit(data);
         reset();
     };

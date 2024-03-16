@@ -25,13 +25,13 @@ export const dependentRouter = createTRPCRouter({
                     message: "You must be logged in to access this resource",
                 });
             }
-            const employeeid = ctx.session?.user?.id;
-            const dependents = await ctx.db.employee.findUnique({
-                where: {id: employeeid},
+            const userid = ctx.session?.user?.id;
+            const employee = await ctx.db.employee.findUnique({
+                where: {userId: userid},
                 include: {Dependent: true}
             })
 
-            return dependents
+            return employee?.Dependent ?? []
         }),
     addDependent: protectedProcedure
         .input(dependentSchema)
@@ -45,16 +45,23 @@ export const dependentRouter = createTRPCRouter({
                 });
             }
 
-            const dependent = await ctx.db.dependent.create({
-                data: {
-                    name,
-                    relation,
-                    dateOfBirth: new Date(dateOfBirth),
-                    employee: {connect: {id: ctx.session?.user?.id || employeeId}}
-                },
-            });
+            const userid = ctx.session?.user?.id;
+            const employee = await ctx.db.employee.findUnique({
+                where: {userId: userid}
+            })
 
-            return dependent;
+            if(employee){
+                const dependent = await ctx.db.dependent.create({
+                    data: {
+                        name,
+                        relation,
+                        dateOfBirth: new Date(dateOfBirth),
+                        employee: {connect: {id: employee.id || employeeId}}
+                    },
+                });
+
+                return dependent;
+            }
         }),
     updateDependent: protectedProcedure
         .input(updateDependentSchema)

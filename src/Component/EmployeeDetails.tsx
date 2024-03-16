@@ -6,26 +6,6 @@ import { useRouter } from 'next/router';
 import { Box, Typography, Button, Avatar, Divider, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
 import { ArrowDropDown, Person2Outlined } from '@mui/icons-material';
 
-interface Employee {
-    username: string;
-    role: string;
-    employeeId: string;
-    id: number;
-    designation: string;
-    user: {
-        id: number;
-        name: string;
-    },
-    Dependent: [
-        {
-            id: number;
-            name: string;
-            relation: string;
-            dateOfBirth: Date
-        }
-    ]
-}
-
 interface Dependent {
     id: number;
     name: string;
@@ -56,7 +36,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({employee}) => {
               Policy Dependants
             </Typography>
             <Divider className="mb-4" />
-            <Accordion>
+            <Accordion elevation={0} sx={{borderRadius:"6px"}}>
               <AccordionSummary
                 expandIcon={<ArrowDropDown />}
                 aria-controls="panel1-content"
@@ -65,7 +45,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({employee}) => {
               >
                 <Person2Outlined />
                 <Typography>
-                  Group Health Insurance {employee?.Dependent?.length}
+                  Group Health Insurance {employee?.Dependent.length}
                 </Typography>
               </AccordionSummary>
               <AccordionDetails>
@@ -99,7 +79,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({employee}) => {
                     >
                       <Avatar>{dependent.name.charAt(0)}</Avatar>
                       <Box>
-                        <Typography variant="body2">
+                        <Typography variant="body2" className=" capitalize">
                           {dependent.name}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">

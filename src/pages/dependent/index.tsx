@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+/* eslint-disable @typescript-eslint/no-floating-promises */
+import React, { useState, useEffect } from 'react';
 import { Box, Typography, Button, List, ListItem, ListItemAvatar, Avatar, ListItemText, IconButton, } from '@mui/material';
-import { Edit as EditIcon, Delete as DeleteIcon, PersonAddAlt1Outlined } from '@mui/icons-material';
+import { PersonAddAlt1Outlined, EditOutlined, DeleteOutlineOutlined } from '@mui/icons-material';
 import {api} from "~/utils/api"
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc'
@@ -8,23 +9,26 @@ import timezone from 'dayjs/plugin/timezone'
 import Sidebar from '../../Component/Sidebar';
 import AddDependentModal from '~/Component/AddDependentModal';
 import EditDependentModal from '~/Component/EditDependentModal';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/router';
+import toast from 'react-hot-toast';
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
-interface Dependent {
-  id: number;
-  name: string;
-  relation: string;
-  dateOfBirth: Date;
-  employeeId: number;
-}
+// interface Dependent {
+//   id: number;
+//   name: string;
+//   relation: string;
+//   dateOfBirth: Date;
+//   employeeId: number;
+// }
 
 const DependentsPage = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editDependentId, setEditDependentId] = useState(0);
-    const [initialEditFormState, setInitialEditFormState] = useState<Partial<Dependent>>({
+    const [initialEditFormState, setInitialEditFormState] = useState<Dependent>({
         id: 1,
         name: '',
         relation: '',
@@ -38,6 +42,9 @@ const DependentsPage = () => {
   const deleteMutation = api.dependent.removeDependent.useMutation()
   const {dependent: {listDependents: {setData, getData}}} = api.useUtils()
 
+  const {data} = useSession()
+  const router = useRouter()
+
   if(isLoading){
     console.log("Loading employees data...")
   } else if(isError){
@@ -45,9 +52,9 @@ const DependentsPage = () => {
   }
 
   const handleEditDependent = (id: number) => {
-    const dependentToEdit = dependentList?.Dependent.find((dependent: { id: number; }) => dependent.id === id);
+    const dependentToEdit = dependentList?.find((dependent: { id: number; }) => dependent.id === id);
     if (dependentToEdit) {
-        dependentToEdit.dateOfBirth = dayjs.utc(new Date(dependentToEdit.dateOfBirth).toISOString()).local().tz('Asia/Kolkata').format('YYYY-MM-DD')
+        dependentToEdit.dateOfBirth = dayjs.utc(new Date(dependentToEdit.dateOfBirth).toISOString()).local().tz('Asia/Kolkata').format('YYYY-MM-DD') as unknown as Date
         setInitialEditFormState(dependentToEdit)
         setIsEditModalOpen(true)
         setEditDependentId(id)
@@ -63,14 +70,14 @@ const DependentsPage = () => {
         employeeId: data.employeeId!
     }
 
-    const oldDependentDoc = getData()?.Dependent.find((dependent) => dependent.id === updateDependent.id)
+    const oldDependentDoc = getData()?.find((dependent) => dependent.id === updateDependent.id)
 
     setData(undefined, (oldData) => {
-        const newDependentsData = [...Array.from(oldData?.Dependent?? [])]
-        const indexOfOldDoc = oldData?.Dependent.findIndex((dependent) => dependent.id === updateDependent.id)
+        const newDependentsData = [...Array.from(oldData?? [])]
+        const indexOfOldDoc = oldData?.findIndex((dependent) => dependent.id === updateDependent.id)
         if(indexOfOldDoc !== undefined && indexOfOldDoc !== -1){
           newDependentsData[indexOfOldDoc] = updateDependent;
-          return {...oldData, Dependent: newDependentsData} as typeof oldData
+          return newDependentsData 
         }
         return oldData;
     })
@@ -79,18 +86,20 @@ const DependentsPage = () => {
         onSuccess: () => {
             setIsEditModalOpen(false)
             refetch().catch((err) => console.log(err));
+            toast.success("Dependent updated successfully")
         },
         onError: () => {
             setData(undefined, (oldData) => {
-              const newDependentsData = [...Array.from(oldData?.Dependent?? [])]
-              const indexOfOldDoc = oldData?.Dependent.findIndex((dependent) => dependent.id === updateDependent.id)
+              const newDependentsData = [...Array.from(oldData?? [])]
+              const indexOfOldDoc = oldData?.findIndex((dependent) => dependent.id === updateDependent.id)
               if(indexOfOldDoc !== undefined && indexOfOldDoc !== -1){
                 newDependentsData[indexOfOldDoc] = oldDependentDoc!;
-                return {...oldData, Dependent: newDependentsData} as typeof oldData
+                return newDependentsData
               }
 
               return oldData;
             })
+            toast.error("Failed to update dependent!!")
         }
     });
 
@@ -99,17 +108,18 @@ const DependentsPage = () => {
   const handleDeleteDependent = (id: number) => {
 
     setData(undefined, (oldData) => {
-        return {...oldData, Dependent: oldData?.Dependent.filter((item: { id: number; }) => item.id !== id)} as typeof oldData
+        return oldData?.filter((item: { id: number; }) => item.id !== id)
     })
 
     deleteMutation.mutate({id: id}, {
         onSuccess: () => {
             refetch().catch((err) => console.log(err));
+            toast.success("Deleted dependent!!")
         }
     })
   };
 
-  const submitHandler = (data: Partial<Dependent>) => {
+  const submitHandler = (data: Dependent) => {
     const newDependent = {
         name: data.name,
         dateOfBirth: data.dateOfBirth,
@@ -118,28 +128,35 @@ const DependentsPage = () => {
     
     const newUpdatedDependent = {
         ...newDependent,
-        id: dependentList?.Dependent.length ?? 0,
+        id: dependentList?.length ?? 0,
         // dateOfBirth: newDependent.dateOfBirth ? new Date(newDependent.dateOfBirth) : new Date(),
         employeeId: 1
     }
 
     setData(undefined, (oldData) => {
-        return {...oldData, Dependent: oldData?.Dependent.concat([newUpdatedDependent])} as typeof oldData
+        return oldData?.concat([newUpdatedDependent])
     })
 
     mutate(newDependent, {
         onSuccess: () => {
             setIsAddModalOpen(false)
-            reset();
             refetch().catch((err) => console.log(err));
+            toast.success("Dependent added successfully")
         },
         onError: () => {
             setData(undefined, (oldData) => {
-                return {...oldData, Dependent: oldData?.Dependent.filter((item) => item !== newUpdatedDependent)} as typeof oldData
+                return oldData?.filter((item) => item !== newUpdatedDependent)
             })
+            toast.error("Failed to add dependent!!")
         }
     });
   }
+
+  // useEffect(() => {
+  //   if(data?.user.role !== "EMPLOYEE"){
+  //     router.push('/')
+  //   }
+  // }, [data?.user.role])
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
@@ -159,7 +176,7 @@ const DependentsPage = () => {
             <Typography variant="h6" fontWeight="bold">
               Dependents
             </Typography>
-            <Typography variant="body2" color={"black"}>
+            <Typography className=" font-light" color={"black"}>
               Manage all the dependents from here
             </Typography>
             </Box>
@@ -169,10 +186,7 @@ const DependentsPage = () => {
               color="primary"
               startIcon={<PersonAddAlt1Outlined />}
               sx={{ textTransform: "none", fontWeight: "light" }}
-              onClick={() => {
-                reset()
-                setIsAddModalOpen(true)
-              }}
+              onClick={() => setIsAddModalOpen(true)}
             >
               Add Dependent
             </Button>
@@ -181,9 +195,10 @@ const DependentsPage = () => {
           <Box sx={{ display: "flex" }}>
             <Box sx={{ flex: 1}}>
                 <List>
-                {dependentList?.Dependent.map((dependent: { id: React.Key | null | undefined; name: string; dateOfBirth: string | number | Date; relation: string; }) => (
+                {dependentList?.map((dependent: { id: React.Key | null | undefined; name: string; dateOfBirth: string | number | Date; relation: string; }) => (
                     <ListItem
                     key={dependent.id}
+                    className="my-2 ml-4 rounded-md border font-light "
                     secondaryAction={
                         <>
                         <IconButton
@@ -191,14 +206,14 @@ const DependentsPage = () => {
                             aria-label="edit"
                             onClick={() => handleEditDependent(dependent.id as number)}
                         >
-                            <EditIcon />
+                            <EditOutlined />
                         </IconButton>
                         <IconButton
                             edge="end"
                             aria-label="delete"
                             onClick={() => handleDeleteDependent(dependent.id as number)}
                         >
-                            <DeleteIcon />
+                            <DeleteOutlineOutlined className="text-red-400" />
                         </IconButton>
                         </>
                     }
@@ -216,14 +231,18 @@ const DependentsPage = () => {
                     </ListItem>
                 ))}
                 </List>
-                {dependentList?.Dependent.length === 0 && (
+                {dependentList?.length === 0 && (
                 <Typography variant="body2" color="text.secondary">
                     No Dependent Selected
                 </Typography>
                 )}
             </Box>
-            <Box sx={{ flex: 1 }}></Box>
-            </Box>
+            <Box
+            className=" ml-6 flex min-h-[75vh] items-center justify-center border-l"
+            sx={{ flex: .6 }}
+          >
+          </Box>
+        </Box>
       </Box>
 
       {/* Add Dependent Modal */}
