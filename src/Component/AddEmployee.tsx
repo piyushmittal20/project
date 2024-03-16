@@ -1,20 +1,24 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import React, { useState } from 'react';
-import { Box, Typography, TextField, Button, ToggleButtonGroup, ToggleButton, Divider, Avatar } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, TextField, Button, Divider, Avatar } from '@mui/material';
 import Sidebar from './Sidebar';
 import DependentModal from './DependentModal';
 import {api} from '~/utils/api'
 import { useRouter } from 'next/router';
-import {
-  CheckBox,
-  DeleteOutline,
-  EditOutlined,
-  OpenInNewOutlined,
-  PeopleAltRounded,
-} from "@mui/icons-material";
+import { CheckBox, DeleteOutline, EditOutlined, OpenInNewOutlined, PeopleAltRounded} from "@mui/icons-material";
+import {Controller, useForm, useFieldArray} from 'react-hook-form'
+import * as yup from 'yup';
+import {yupResolver} from '@hookform/resolvers/yup';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 interface Dependent {
+  id?: number;
   name: string;
   relation: string;
   dateOfBirth: Date | null;
@@ -25,8 +29,7 @@ interface EmployeeData {
   username: string;
   employeeId: string;
   designation: string;
-  // dateOfJoining: Date | null;
-  // dateOfBirth: Date | null;
+  dateOfJoining: Date;
   gender: 'Male' | 'Female';
   mobileNumber: string;
   email: string;
@@ -38,112 +41,132 @@ interface AddEmployeeProps {
   initialData?: EmployeeData;
 }
 
-const AddEmployee: React.FC<AddEmployeeProps> = ({ initialData }) => {
+const schema = yup.object().shape({
+  username: yup.string().required('Employee Name is required'),
+  employeeId: yup.string().required('Employee ID is required'),
+  designation: yup.string().required('Employee Designation is required'),
+  dateOfJoining: yup.date().required('Date of Joining is required'),
+  gender: yup.mixed<'Male' | 'Female'>().oneOf(['Male', 'Female']).required('Gender is required'),
+  mobileNumber: yup.string().required('Mobile Number is required'),
+  email: yup.string().email('Invalid email address').required('Email is required'),
+  dependents: yup.array().of(
+    yup.object().shape({
+      name: yup.string().required('Dependent Name is required'),
+      relation: yup.string().required('Relation is required'),
+      dateOfBirth: yup.date().required('Date of Birth is required'),
+    })
+  ),
+});
+
+const AddEmployee: React.FC<AddEmployeeProps> = () => {
   const mutation = api.employee.createEmployee.useMutation()
   const updateMutation = api.employee.updateEmployee.useMutation()
   const router = useRouter()
-  const {pathname} = router;
+  const {query} = router;
+  const dependentId = query?.id as string | undefined;
 
-  console.log(pathname)
+  const {data: employeeDetails, isLoading} = api.employee.getEmployeeDetail.useQuery({id: Number(dependentId)}, {enabled: dependentId != null})
 
-  const [formData, setFormData] = useState<EmployeeData>(
-    initialData?? {
-      username: '',
-      employeeId: '',
-      designation: '',
-      // dateOfJoining: null,
-      // dateOfBirth: null,
-      gender: 'Male',
-      mobileNumber: '',
-      email: '',
-      dependents: [],
-      insuranceId: 1
-    }
-  );
-
-  console.log(initialData, 'initialData')
-
+  const [open, setOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editData, setEditData] = useState({})
 
-  const handleAddDependent = (dependent: Dependent) => {
-    setFormData({
-      ...formData,
-      dependents: [...formData.dependents, dependent],
-    });
-  };
+  const { control, handleSubmit, reset, formState: { errors } } = useForm({
+    resolver: yupResolver(schema),
+    // defaultValues: {
+    //   username: '',
+    //   employeeId: '',
+    //   designation: '',
+    //   dateOfJoining: null,
+    //   gender: 'Male',
+    //   mobileNumber: '',
+    //   email: '',
+    //   dependents: [],
+    //   insuranceId: 1,
+    // },
+  });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLElement>, isToggle?: boolean) => {
-    if (isToggle) {
-      setFormData({
-        ...formData,
-        gender: e.currentTarget.value as 'Male' | 'Female',
-      });
+  const { fields, append, remove, update } = useFieldArray<EmployeeData, 'dependents', Dependent>({
+    control,
+    name: 'dependents',
+  });
+
+  useEffect(() => {
+    console.log(employeeDetails, 'alljlajlj')
+    if(employeeDetails){
+      reset(employeeDetails)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeDetails])
+
+  // const handleAddDependent = (dependent: Dependent) => {
+  //   setFormData({
+  //     ...formData,
+  //     dependents: [...formData.dependents, dependent],
+  //   });
+  // };
+
+  const handleAddDependent = (data: Dependent) => {
+    if(data.id){
+      const oldFieldIndex = fields.findIndex((field) => field.id === data.id);
+      if(oldFieldIndex !== -1){
+        update(oldFieldIndex, data)
+      }
     } else {
-      setFormData({
-        ...formData,
-        [e.target.name]: e.target.value,
-      });
+      append(data);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleDeleteDependent = (index: number) => {
+    remove(index);
+  };
 
-    if(pathname === '/employee/add'){
-      mutation.mutate(formData)
-    } else {
-      formData.dependents ?  formData.dependents?.map((dependent) => {
-        if(dependent.id){
-          formData.dependentsToUpdate = []
-          formData.dependentsToUpdate.push(dependent)
-        } else {
-          formData.dependentsToCreate = []
-          formData.dependentsToCreate.push(dependent)
-        }
-      }) : formData.Dependent?.map((dependent) => {
-        if(dependent.id){
-          formData.dependentsToUpdate = []
-          formData.dependentsToUpdate.push(dependent)
-        } else {
-          formData.dependentsToCreate = []
-          formData.dependentsToCreate.push(dependent)
-        }
-      })
-
-      console.log(formData, '105')
-      updateMutation.mutate(formData)
+  const handleEditDependent = (id: number) => {
+    const field: Dependent[] = fields.filter((field) => field.id === id)
+    const dependentSelected: Dependent = field[0];
+    const dateOfBirth = dayjs.utc(new Date(dependentSelected.dateOfBirth!).toISOString()).local().tz('Asia/Kolkata').format('YYYY-MM-DD')
+    if(dateOfBirth){
+      dependentSelected.dateOfBirth = dateOfBirth
     }
+    setEditData(dependentSelected)
+    setIsModalOpen(true);
+  }
 
-    router.push('/employee')
+  // const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLElement>, isToggle?: boolean) => {
+  //   if (isToggle) {
+  //     setFormData({
+  //       ...formData,
+  //       gender: e.currentTarget.value as 'Male' | 'Female',
+  //     });
+  //   } else {
+  //     setFormData({
+  //       ...formData,
+  //       [e.target.name]: e.target.value,
+  //     });
+  //   }
+  // };
 
-    setFormData({
-      username: '',
-      employeeId: '',
-      designation: '',
-      // dateOfJoining: null,
-      // dateOfBirth: null,
-      gender: 'Male',
-      mobileNumber: '',
-      email: '',
-      dependents: [],
-      insuranceId: 1
-    })
+  const submitHandler = (data: Partial<EmployeeData>) => {
 
   };
 
   const openModal = () => {
+    setEditData({})
     setIsModalOpen(true);
   };
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
       <Sidebar />
+      {isLoading ? <h1>Loading...</h1> : (
       <Box
         sx={{
           flex: 1,
           display: "flex",
           flexDirection: "column",
         }}
+        component="form"
+        onSubmit={handleSubmit(submitHandler)}
       >
         <Box
           className="bg-[#edf5ff] text-[#384793]"
@@ -168,6 +191,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ initialData }) => {
               className="font"
               variant="outlined"
               color="primary"
+              href='/employee'
               sx={{ textTransform: "none", fontWeight: "light" }}
             >
               Discard
@@ -179,7 +203,8 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ initialData }) => {
               aria-controls={open ? "basic-menu" : undefined}
               aria-haspopup="true"
               aria-expanded={open ? "true" : undefined}
-              onClick={handleSubmit}
+              onClick={() => setOpen(!open)}
+              type='submit'
             >
               Confirm Employee
             </Button>
@@ -198,78 +223,127 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ initialData }) => {
                 gap: "1rem",
               }}
             >
-            <TextField
-              label="Employee Name *"
-              placeholder="Full Name"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-            />
-            <TextField
-              label="Employee ID *"
-              placeholder="Company employee id"
-              name="employeeId"
-              value={formData.employeeId}
-              onChange={handleChange}
-            />
-            <TextField
-              label="Employee Designation *"
-              placeholder="Designation"
-              name="designation"
-              value={formData.designation}
-              onChange={handleChange}
-            />
-            {/* <TextField
-              label="Date of Joining *"
-              type="date"
-              name="dateOfJoining"
-              value={formData.dateOfJoining}
-              onChange={handleChange}
-              InputLabelProps={{ shrink: true }}
-            /> */}
-            {/* <TextField
-              label="Date of Birth *"
-              type="date"
-              name="dateOfBirth"
-              value={formData.dateOfBirth}
-              onChange={handleChange}
-              InputLabelProps={{ shrink: true }}
-            /> */}
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Controller
+                name="username"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Employee Name *"
+                    placeholder="Full Name"
+                    error={!!errors.username}
+                    helperText={errors.username?.message}
+                  />
+                )}
+              />
+            <Controller
+                name="employeeId"
+                control={control}
+                render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Employee Id *"
+                      placeholder="Employee Id"
+                      error={!!errors.employeeId}
+                      helperText={errors.employeeId?.message}
+                    />
+                )}
+              />
+            <Controller
+                name="designation"
+                control={control}
+                render={({ field }) => (
+                    <TextField
+                    {...field}
+                    label="Designation *"
+                    placeholder="Designation"
+                    error={!!errors.designation}
+                    helperText={errors.designation?.message}
+                  />
+                )}
+              />
+            <Controller
+                name="dateOfJoining"
+                control={control}
+                defaultValue={new Date()}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Date of Joining"
+                    type="date"
+                    error={!!errors.dateOfJoining}
+                    helperText={errors.dateOfJoining?.message}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                )}
+              />
+            <Controller
+                name="email"
+                control={control}
+                render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Email *"
+                      placeholder="Email Address"
+                      error={!!errors.email}
+                      helperText={errors.email?.message}
+                    />
+                )}
+              />
+            <Controller
+                name="mobileNumber"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Mobile number *"
+                    placeholder="Mobile number"
+                    error={!!errors.mobileNumber}
+                    helperText={errors.mobileNumber?.message}
+                  />
+                )}
+              />
+              <Controller
+                name="gender"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Gender *"
+                    placeholder="Gender"
+                    error={!!errors.gender}
+                    helperText={errors.gender?.message}
+                  />
+                )}
+              />
+              {/* <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <Typography variant="body1">Gender *</Typography>
-              <ToggleButtonGroup
-                value={formData.gender ? formData.gender : formData?.user?.gender}
-                exclusive
-                onChange={(_, value) => handleChange({ currentTarget: { value } }, true)}
-                sx={{ ml: 2 }}
-              >
-                <ToggleButton value="Male">Male</ToggleButton>
-                <ToggleButton value="Female">Female</ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-            <TextField
-              label="Mobile Number *"
-              placeholder="without country code"
-              name="mobileNumber"
-              value={formData.mobileNumber ? formData.mobileNumber: Number(formData?.user?.mobileNumber)}
-              onChange={handleChange}
-            />
-            <TextField
-              label="Email *"
-              placeholder="corporate email id"
-              name="email"
-              value={formData.email ? formData.email : formData?.user?.email}
-              onChange={handleChange}
-            />
+              <Controller
+                name="gender"
+                control={control}
+                defaultValue="Male"
+                render={({ field }) => (
+                  <ToggleButtonGroup
+                    {...field}
+                    exclusive
+                    onChange={(event, value) => setValue('gender', value as "Male" | "Female")}
+                    sx={{ ml: 2 }}
+                  >
+                    <ToggleButton value="Male">Male</ToggleButton>
+                    <ToggleButton value="Female">Female</ToggleButton>
+                  </ToggleButtonGroup>
+                )}
+              />
+              </Box> */}
           </Box>
           <Box sx={{ marginTop: "2rem", padding: "1rem" }}>
             <Typography variant="h6" gutterBottom>
                 Add dependents
               </Typography>
               <Divider />
-              {formData.dependents ? formData.dependents.map((dependent) => (
+              {fields.map((field, index) => (
                 <Box
-                  key={dependent.name}
+                  key={index}
                   className=" rounded-md"
                   sx={{
                     display: "flex",
@@ -292,55 +366,21 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ initialData }) => {
                       padding: "3px",
                     }}
                   >
-                    <Avatar>{dependent.name.charAt(0)}</Avatar>
+                    <Avatar>{field.name.charAt(0)}</Avatar>
                     <Box className=" pl-2">
-                      <Typography variant="h6">{dependent.name}</Typography>
+                      <Typography variant="h6">{field.name}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {dependent.dateOfBirth} | {dependent.relation}
+                        {new Date(field.dateOfBirth!).toLocaleDateString()} | {field.relation}
                       </Typography>
                     </Box>
                   </Box>
                   <Box className=" mr-6  flex items-center gap-2 ">
-                    <EditOutlined className="cursor-pointer pl-1" />
-                    <DeleteOutline className=" cursor-pointer pl-1 text-orange-600" />
-                  </Box>
-                </Box>
-              )) : formData?.Dependent?.map((dependent) => (
-                <Box
-                  key={dependent.name}
-                  className=" rounded-md"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    border: "solid 0.3px #e5e7eb",
-                    gap: "0.5rem",
-                    marginY: "2px",
-                    marginTop: "4px",
-                    padding: "3px",
-                  }}
-                >
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                      marginY: "2px",
-                      marginTop: "4px",
-                      padding: "3px",
-                    }}
-                  >
-                    <Avatar>{dependent.name.charAt(0)}</Avatar>
-                    <Box className=" pl-2">
-                      <Typography variant="h6">{dependent.name}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {new Date(dependent.dateOfBirth).toLocaleDateString()} | {dependent.relation}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Box className=" mr-6  flex items-center gap-2 ">
-                    <EditOutlined className="cursor-pointer pl-1" />
-                    <DeleteOutline className=" cursor-pointer pl-1 text-orange-600" />
+                    <EditOutlined className="cursor-pointer pl-1" 
+                      onClick={() => handleEditDependent(field.id!)}
+                    />
+                    <DeleteOutline className=" cursor-pointer pl-1 text-orange-600" 
+                      onClick={() => handleDeleteDependent(index)} 
+                    />
                   </Box>
                 </Box>
               ))}
@@ -374,9 +414,9 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ initialData }) => {
                   </Box>
                 </Box>
               </Box>
-              </Box>
-              </Box>
-              <Box sx={{ marginLeft: "2rem", width: "300px", flex: 2 }}>
+          </Box>
+          </Box>
+          <Box sx={{ marginLeft: "2rem", width: "300px", flex: 2 }}>
             <Box
               sx={{
                 borderRadius: "4px",
@@ -421,7 +461,7 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ initialData }) => {
                   <Button variant="outlined" color="success">
                     ₹2,00,000
                   </Button>
-                  <Button variant="outlined" color="success">
+                  <Button variant="contained" color="success">
                     ₹7,50,000
                   </Button>
                   <Button variant="outlined" color="success">
@@ -429,39 +469,19 @@ const AddEmployee: React.FC<AddEmployeeProps> = ({ initialData }) => {
                   </Button>
                 </Box>
                 </Box>
-              </Box>
             </Box>
           </Box>
+        </Box>
       </Box>
+      )}
       <DependentModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleAddDependent}
+        initialData={editData}
       />
     </Box>
   );
 };
 
 export default AddEmployee;
-
-
-{/* <Box sx={{ marginTop: '2rem' }}>
-          <Typography variant="h6" gutterBottom>Add dependents</Typography>
-          <Divider />
-          {formData.dependents ? formData.dependents.map((dependent, index) => (
-            <Box key={index} sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginTop: '1rem' }}>
-              <Typography>{dependent.name}</Typography>
-              <Typography>{dependent.relation}</Typography>
-              <Typography>{dependent.dateOfBirth ? dependent.dateOfBirth : ''}</Typography>
-            </Box>
-          )) : formData?.Dependent?.map((dependent, index) => (
-            <Box key={index} sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginTop: '1rem' }}>
-              <Typography>{dependent.name}</Typography>
-              <Typography>{dependent.relation}</Typography>
-              <Typography>{dependent.dateOfBirth ? dependent.dateOfBirth : ''}</Typography>
-            </Box>
-          ))}
-          <Button variant="outlined" onClick={openModal} sx={{ marginTop: '1rem' }}>
-            + Add a dependent
-          </Button>
-        </Box> */}

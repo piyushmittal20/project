@@ -2,19 +2,25 @@ import { TRPCError } from "@trpc/server";
 
 import { z } from 'zod';
 import { createTRPCRouter, protectedProcedure } from "../trpc";
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 const createEmployeeSchema = z.object({
     username: z.string(),
     email: z.string(),
-    dateOfJoining: z.string(),
+    dateOfJoining: z.date(),
     designation: z.string(),
-    insuranceId: z.number(),
+    insuranceId: z.number().optional(),
     employeeId: z.string(),
     dependents: z.array(
         z.object({
             name: z.string(),
             relation: z.string(),
-            dateOfBirth: z.string(),
+            dateOfBirth: z.date(),
         })
     ),
 })
@@ -24,7 +30,7 @@ const createBulkEmployeesSchema = z.array(
         email: z.string(),
         dateOfJoining: z.date(),
         designation: z.string(),
-        insuranceId: z.number(),
+        insuranceId: z.number().optional(),
         employeeId: z.string(),
         dependents: z.array(
             z.object({
@@ -38,21 +44,22 @@ const createBulkEmployeesSchema = z.array(
 
 const updateEmployeeSchema = z.object({
     id: z.number(),
-    username: z.string().optional(),
-    dateOfJoining: z.date().optional(),
-    designation: z.string().optional(),
+    username: z.string(),
+    dateOfJoining: z.string(),
+    designation: z.string(),
     insuranceId: z.number(),
-    employeeId: z.string().optional(),
+    employeeId: z.string(),
     user: z.object({
         email: z.string(),
         mobileNumber: z.bigint(),
-        gender: z.string()
+        gender: z.string(),
+        dateOfBirth: z.string()
     }),
     dependentsToCreate: z.array(
         z.object({
             name: z.string(),
             relation: z.string(),
-            dateOfBirth: z.date()
+            dateOfBirth: z.string()
         })
     ).optional(),
     dependentsToUpdate: z.array(
@@ -60,7 +67,7 @@ const updateEmployeeSchema = z.object({
             id: z.number(),
             name: z.string(),
             relation: z.string(),
-            dateOfBirth: z.date()
+            dateOfBirth: z.string()
         })
     )
 })
@@ -131,6 +138,7 @@ export const employeeRouter = createTRPCRouter({
     getEmployeeDetail: protectedProcedure
         .input(z.object({ id: z.number() }))
         .query(async ({ctx, input}) => {
+            console.log(input)
             const {id} = input;
 
             if (ctx.session?.user?.role !== 'HR_MANAGER') {
@@ -140,15 +148,28 @@ export const employeeRouter = createTRPCRouter({
                 });
             }
 
-            const employee = await ctx.db.employee.findUnique({
-                where: {id},
-                include: {
-                    user: true,
-                    Dependent: true,
-                },
-            }, )
+                const employee = await ctx.db.employee.findUnique({
+                    where: {id: id},
+                    include: {
+                        user: true,
+                        Dependent: true,
+                    },
+                })
+                
+                if(!employee){
+                    return employee;
+                }
 
-            return employee;
+                const {user, Dependent, ...employeeDetails} = employee
+
+                return {
+                    ...employeeDetails,
+                    dateOfJoining: dayjs.utc(new Date(employeeDetails.dateOfJoining).toISOString()).local().tz('Asia/Kolkata').format('YYYY-MM-DD'),
+                    email: user.email,
+                    gender: user.gender,
+                    mobileNumber: Number(user.mobileNumber),
+                    dependents: Dependent
+                };
         }),
     updateEmployee: protectedProcedure
         .input(updateEmployeeSchema)
@@ -177,7 +198,7 @@ export const employeeRouter = createTRPCRouter({
                 where: { id },
                 data: {
                     designation,
-                    dateOfJoining,
+                    dateOfJoining: new Date(dateOfJoining),
                     insurance: { connect: { id: insuranceId } },
                     username,
                     employeeId,
@@ -213,16 +234,20 @@ export const employeeRouter = createTRPCRouter({
                 })
             }
 
-            await ctx.db.user.update({
+            const updatedUser = await ctx.db.user.update({
                 where: { email: user.email },
                 data: {
                     email: user.email,
                     gender: user.gender,
                     mobileNumber: user.mobileNumber,
+                    dateOfBirth: user.dateOfBirth
                 }
             })
 
-            return employee
+            return {
+                employee,
+                updatedUser
+            }
         }),
     deleteEmployee: protectedProcedure
         .input(z.object({ id: z.number() }))
@@ -285,7 +310,7 @@ export const employeeRouter = createTRPCRouter({
 
                 await ctx.db.employee.create({
                     data: {
-                        dateOfJoining: employee.dateOfJoining,
+                        dateOfJoining: new Date(employee.dateOfJoining),
                         designation: employee.designation,
                         user: {
                             connect: {
@@ -307,7 +332,10 @@ export const employeeRouter = createTRPCRouter({
                     }
                 })
 
-                return "Employees added successfully!!"
+                return {
+                    message: "Employees added successfully!!",
+                    success: true
+                }
             }
         })
 })

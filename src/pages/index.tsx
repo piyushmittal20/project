@@ -7,7 +7,7 @@ import {signIn, useSession} from 'next-auth/react'
 import {useRouter} from 'next/router'
 import { Box, Typography, TextField, Button } from '@mui/material';
 
-import { api } from "~/utils/api";
+// import { api } from "~/utils/api";
 
 type loginCreds = {
   email: string;
@@ -29,20 +29,20 @@ export default function Home() {
   // const mutation = api.employee.deleteEmployee.useMutation()
   // const mutation = api.employee.updateEmployee.useMutation()
 
-  useEffect(() => {
-    if(data && data.user.role === 'HR_MANAGER'){
-      router.push('/employee')
-    } else {
-      router.push('/dependent')
-    }
-  }, [data, router])
+  // useEffect(() => {
+  //   if(data && data.user.role === 'HR_MANAGER'){
+  //     router.push('/employee')
+  //   } else {
+  //     router.push('/dependent')
+  //   }
+  // }, [data, router])
 
   const handleLogin = async () => {
     // mutation.mutate({
-    //   name: 'User3',
-    //   email: 'user3@gmail.com',
-    //   gender: 'Male',
-    //   mobileNumber: 8672687544,
+    //   name: 'User7',
+    //   email: 'user7@gmail.com',
+    //   gender: 'Female',
+    //   mobileNumber: 8672687546,
     //   role: 'EMPLOYEE',
     //   dateOfBirth: new Date(),
     //   password: '12345678'

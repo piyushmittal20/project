@@ -5,7 +5,7 @@ import { createTRPCRouter, protectedProcedure } from "../trpc";
 const dependentSchema = z.object({
     name: z.string(),
     relation: z.string(),
-    dateOfBirth: z.string(),
+    dateOfBirth: z.date(),
     employeeId: z.optional(z.number())
 })
 
@@ -13,7 +13,7 @@ const updateDependentSchema = z.object({
     id: z.number(),
     name: z.string(),
     relation: z.string(),
-    dateOfBirth: z.string(),
+    dateOfBirth: z.date(),
 })
 
 export const dependentRouter = createTRPCRouter({
@@ -44,8 +44,6 @@ export const dependentRouter = createTRPCRouter({
                     message: "You must be logged in to access this resource",
                 });
             }
-
-            console.log(JSON.stringify(ctx.session))
 
             const dependent = await ctx.db.dependent.create({
                 data: {
@@ -92,10 +90,13 @@ export const dependentRouter = createTRPCRouter({
         .mutation(async({ctx, input}) => {
             const {id} = input;
 
-            const res = await ctx.db.dependent.delete({
+            await ctx.db.dependent.delete({
                 where: {id}
             })
 
-            return res
+            return {
+                message: 'Dependent deleted successfully',
+                success: true
+            }
         }),
 })

@@ -1,21 +1,30 @@
 import React, { useState } from 'react';
-import { Box, Typography, Button, List, ListItem, ListItemAvatar, Avatar, ListItemText, IconButton, Modal, TextField } from '@mui/material';
+import { Box, Typography, Button, List, ListItem, ListItemAvatar, Avatar, ListItemText, IconButton, } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, PersonAddAlt1Outlined } from '@mui/icons-material';
 import {api} from "~/utils/api"
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
 import Sidebar from '../../Component/Sidebar';
+import AddDependentModal from '~/Component/AddDependentModal';
+import EditDependentModal from '~/Component/EditDependentModal';
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
+interface Dependent {
+  id: number;
+  name: string;
+  relation: string;
+  dateOfBirth: Date;
+  employeeId: number;
+}
+
 const DependentsPage = () => {
-    // const [dependents, setDependents] = useState([])
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editDependentId, setEditDependentId] = useState(0);
-    const [initialEditFormState, setInitialEditFormState] = useState({
+    const [initialEditFormState, setInitialEditFormState] = useState<Partial<Dependent>>({
         id: 1,
         name: '',
         relation: '',
@@ -27,7 +36,7 @@ const DependentsPage = () => {
   const {mutate} = api.dependent.addDependent.useMutation()
   const updateMutation = api.dependent.updateDependent.useMutation()
   const deleteMutation = api.dependent.removeDependent.useMutation()
-  const {dependent: {listDependents: {setData}}} = api.useUtils()
+  const {dependent: {listDependents: {setData, getData}}} = api.useUtils()
 
   if(isLoading){
     console.log("Loading employees data...")
@@ -40,46 +49,47 @@ const DependentsPage = () => {
     if (dependentToEdit) {
         dependentToEdit.dateOfBirth = dayjs.utc(new Date(dependentToEdit.dateOfBirth).toISOString()).local().tz('Asia/Kolkata').format('YYYY-MM-DD')
         setInitialEditFormState(dependentToEdit)
-        setIsEditModalOpen(true);
+        setIsEditModalOpen(true)
         setEditDependentId(id)
     }
   };
 
-  const handleUpdateDependent: React.FormEventHandler<HTMLFormElement> = (e) => {
-    e.preventDefault();
-
-    const targetEl = e.target as HTMLFormElement
-
-    const formData = new FormData(targetEl);
-
+  const handleUpdateDependent = (data: Partial<Dependent>) => {
     const updateDependent = {
         id: editDependentId,
-        name: formData.get('name') as string,
-        dateOfBirth: formData.get('dateOfBirth') as string,
-        relation: formData.get('relation') as string,
-    }
-    
-    const newUpdatedDependent = {
-        ...updateDependent,
-        dateOfBirth: new Date(updateDependent.dateOfBirth),
-        employeeId: 1
+        name: data.name!,
+        dateOfBirth: data.dateOfBirth!,
+        relation: data.relation!,
+        employeeId: data.employeeId!
     }
 
-    // const listDependentsQueryKey = getQueryKey(api.dependent.listDependents)
+    const oldDependentDoc = getData()?.Dependent.find((dependent) => dependent.id === updateDependent.id)
 
     setData(undefined, (oldData) => {
-        return {...oldData, Dependent: oldData?.Dependent.concat([newUpdatedDependent])} as typeof oldData
+        const newDependentsData = [...Array.from(oldData?.Dependent?? [])]
+        const indexOfOldDoc = oldData?.Dependent.findIndex((dependent) => dependent.id === updateDependent.id)
+        if(indexOfOldDoc !== undefined && indexOfOldDoc !== -1){
+          newDependentsData[indexOfOldDoc] = updateDependent;
+          return {...oldData, Dependent: newDependentsData} as typeof oldData
+        }
+        return oldData;
     })
 
     updateMutation.mutate(updateDependent, {
         onSuccess: () => {
             setIsEditModalOpen(false)
-            targetEl.reset();
             refetch().catch((err) => console.log(err));
         },
         onError: () => {
             setData(undefined, (oldData) => {
-                return {...oldData, Dependent: oldData?.Dependent.filter((item: { dateOfBirth: Date; employeeId: number; id: number; name: string; relation: string; }) => item !== newUpdatedDependent)} as typeof oldData
+              const newDependentsData = [...Array.from(oldData?.Dependent?? [])]
+              const indexOfOldDoc = oldData?.Dependent.findIndex((dependent) => dependent.id === updateDependent.id)
+              if(indexOfOldDoc !== undefined && indexOfOldDoc !== -1){
+                newDependentsData[indexOfOldDoc] = oldDependentDoc!;
+                return {...oldData, Dependent: newDependentsData} as typeof oldData
+              }
+
+              return oldData;
             })
         }
     });
@@ -99,27 +109,19 @@ const DependentsPage = () => {
     })
   };
 
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
-    e.preventDefault();
-
-    const targetEl = e.target as HTMLFormElement
-
-    const formData = new FormData(targetEl);
-
+  const submitHandler = (data: Partial<Dependent>) => {
     const newDependent = {
-        name: formData.get('name') as string,
-        dateOfBirth: formData.get('dateOfBirth') as string,
-        relation: formData.get('relation') as string,
+        name: data.name,
+        dateOfBirth: data.dateOfBirth,
+        relation: data.relation
     }
     
     const newUpdatedDependent = {
         ...newDependent,
-        id: dependentList?.Dependent.length?? 0,
-        dateOfBirth: new Date(newDependent.dateOfBirth),
+        id: dependentList?.Dependent.length ?? 0,
+        // dateOfBirth: newDependent.dateOfBirth ? new Date(newDependent.dateOfBirth) : new Date(),
         employeeId: 1
     }
-
-    // const listDependentsQueryKey = getQueryKey(api.dependent.listDependents)
 
     setData(undefined, (oldData) => {
         return {...oldData, Dependent: oldData?.Dependent.concat([newUpdatedDependent])} as typeof oldData
@@ -128,16 +130,16 @@ const DependentsPage = () => {
     mutate(newDependent, {
         onSuccess: () => {
             setIsAddModalOpen(false)
-            targetEl.reset();
+            reset();
             refetch().catch((err) => console.log(err));
         },
         onError: () => {
             setData(undefined, (oldData) => {
-                return {...oldData, Dependent: oldData?.Dependent.filter((item: { id: any; dateOfBirth: Date; employeeId: number; name: string; relation: string; }) => item !== newUpdatedDependent)} as typeof oldData
+                return {...oldData, Dependent: oldData?.Dependent.filter((item) => item !== newUpdatedDependent)} as typeof oldData
             })
         }
     });
-}
+  }
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
@@ -167,7 +169,10 @@ const DependentsPage = () => {
               color="primary"
               startIcon={<PersonAddAlt1Outlined />}
               sx={{ textTransform: "none", fontWeight: "light" }}
-              onClick={() => setIsAddModalOpen(true)}
+              onClick={() => {
+                reset()
+                setIsAddModalOpen(true)
+              }}
             >
               Add Dependent
             </Button>
@@ -222,7 +227,7 @@ const DependentsPage = () => {
       </Box>
 
       {/* Add Dependent Modal */}
-      <Modal
+      {/* <Modal
         open={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         sx={{
@@ -243,26 +248,49 @@ const DependentsPage = () => {
             overflowY: 'auto',
           }}
           component="form"
-          onSubmit={handleSubmit}
+          onSubmit={handleSubmit(submitHandler)}
         >
           <Typography variant="h6" gutterBottom>
             Add Dependent
           </Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }}>
-            <TextField
-              label="Dependent Name"
+            <Controller
+              control={control}
+              defaultValue=""
               name='name'
+              render={({ field }) => (
+                <>
+                  <TextField {...field} label="Dependent Name" />
+                  {errors.name && <Typography variant="body2" color="error">{errors.name.message}</Typography>}
+                </>
+              )}
             />
-            <TextField
-              label="Date of Birth"
-              placeholder="dd/mm/yyyy"
-              type="date"
+            <Controller
               name="dateOfBirth"
-              InputLabelProps={{ shrink: true }}
+              control={control}
+              defaultValue={new Date()}
+              render={({ field }) => (
+                <>
+                  <TextField
+                    {...field}
+                    label="Date of Birth"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  {errors.dateOfBirth && <Typography variant="body2" color="error">{errors.dateOfBirth.message}</Typography>}
+                </>
+              )}
             />
-            <TextField
-              label="Relation"
+            <Controller
               name="relation"
+              control={control}
+              defaultValue=""
+              render={({ field }) => (
+                <>
+                  <TextField {...field} label="Relation" />
+                  {errors.relation && <Typography variant="body2" color="error">{errors.relation.message}</Typography>}
+                </>
+              )}
             />
           </Box>
           <Box
@@ -281,10 +309,15 @@ const DependentsPage = () => {
             </Button>
           </Box>
         </Box>
-      </Modal>
+      </Modal> */}
+      <AddDependentModal 
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmit={submitHandler}
+      />
 
       {/* Edit Dependent Modal */}
-      <Modal
+      {/* <Modal
         open={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         sx={{
@@ -305,32 +338,49 @@ const DependentsPage = () => {
             overflowY: 'auto',
           }}
           component="form"
-          onSubmit={handleUpdateDependent}
+          onSubmit={handleSubmit(handleUpdateDependent)}
         >
           <Typography variant="h6" gutterBottom>
             Edit Dependent
           </Typography>
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '1rem' }}>
-            <TextField
-              label="Dependent Name"
-              name='name'
+          <Controller
+              name="name"
+              control={control}
               defaultValue={initialEditFormState.name}
-              key={initialEditFormState.name}
+              render={({ field }) => (
+                <>
+                  <TextField {...field} label="Dependent Name" />
+                  {errors.name && <Typography variant="body2" color="error">{errors.name.message}</Typography>}
+                </>
+              )}
             />
-            <TextField
-              label="Date of Birth"
-              placeholder="dd/mm/yyyy"
-              type='date'
-              defaultValue={initialEditFormState.dateOfBirth}
+            <Controller
               name="dateOfBirth"
-              key={initialEditFormState.dateOfBirth}
-              InputLabelProps={{ shrink: true }}
+              control={control}
+              defaultValue={initialEditFormState.dateOfBirth}
+              render={({ field }) => (
+                <>
+                  <TextField
+                    {...field}
+                    label="Date of Birth"
+                    type="date"
+                    InputLabelProps={{ shrink: true }}
+                  />
+                  {errors.dateOfBirth && <Typography variant="body2" color="error">{errors.dateOfBirth.message}</Typography>}
+                </>
+              )}
             />
-            <TextField
-              label="Relation"
+            <Controller
+              name="relation"
+              control={control}
               defaultValue={initialEditFormState.relation}
-              name='relation'
-              key={initialEditFormState.relation}
+              render={({ field }) => (
+                <>
+                  <TextField {...field} label="Relation" />
+                  {errors.relation && <Typography variant="body2" color="error">{errors.relation.message}</Typography>}
+                </>
+              )}
             />
           </Box>
           <Box
@@ -349,7 +399,13 @@ const DependentsPage = () => {
             </Button>
           </Box>
         </Box>
-      </Modal>
+      </Modal> */}
+      <EditDependentModal 
+        open={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSubmit={handleUpdateDependent}
+        initialFormState={initialEditFormState}
+      />
       </Box>
   );
 };

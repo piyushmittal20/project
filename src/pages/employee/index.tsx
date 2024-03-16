@@ -23,6 +23,7 @@ import Sidebar from '../../Component/Sidebar';
 import EmployeeList from '../../Component/EmployeeList';
 import EmployeeDetails from '../../Component/EmployeeDetails';
 import {api} from "~/utils/api"
+import BulkUploadModal from '~/Component/BulkUploadModal';
 
 interface Employee {
   username: string;
@@ -47,6 +48,9 @@ interface Employee {
 const Employees: React.FC = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [tabValue, setTabValue] = useState<number>(0);
+  const [bulkModalIsOpen, setBulkModalIsOpen] = useState(false)
+
+  const onBulkModalClose = () => setBulkModalIsOpen(false)
 
   const {data: listEmployees, isLoading, isError} = api.employee.listEmployees.useQuery()
 
@@ -133,9 +137,9 @@ const Employees: React.FC = () => {
               }}
             >
               <Link href="/employee/add">
-                <MenuItem>Single Entry</MenuItem>
+                <MenuItem sx={{ width: 210, maxWidth: '100%' }}>Single Entry</MenuItem>
               </Link>
-              <MenuItem>Bulk Entry</MenuItem>
+                <MenuItem onClick={() => setBulkModalIsOpen(true)}>Bulk Entry</MenuItem>
             </Menu>
           </Box>
         </Box>
@@ -203,6 +207,7 @@ const Employees: React.FC = () => {
           </Box>
         </Box>
       </Box>
+      <BulkUploadModal open={bulkModalIsOpen} onClose={onBulkModalClose} />
     </Box>
   );
 };
